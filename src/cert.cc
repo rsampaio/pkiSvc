@@ -94,7 +94,7 @@ std::string CertificateGenerator::get_ca_cert() {
   return std::string(cert);
 }
 std::string CertificateGenerator::get_ca_key() {
-  // FIX: hadcoded size
+  // FIX: calculate key size
   char *key = new char[4096];
   BIO *bio = BIO_new(BIO_s_mem());
   if (PEM_write_bio_RSAPrivateKey(bio, EVP_PKEY_get1_RSA(this->ca_key), NULL,
