@@ -8,72 +8,58 @@ namespace {
 class CertificateTest : public testing::Test {
 public:
   cert::CertificateGenerator cg;
-  std::string cert_str, key_str, line;
-  char *cert;
+  std::string pub_str, key_str, line;
+  std::unique_ptr<char[]> pub;
 
   virtual void SetUp() {
-
-    std::fstream cert_f("ca.cert.pem",
-                        std::ios::binary | std::ios::in | std::ios::ate);
+    std::fstream pub_f("ca.key.pub",
+                       std::ios::binary | std::ios::in | std::ios::ate);
     std::fstream key_f("ca.key.pem",
                        std::ios::binary | std::ios::in | std::ios::ate);
 
     // read ca pem
-    std::streamoff cert_size = cert_f.tellg();
-    cert_f.seekg(0, cert_f.beg);
+    std::streamoff pub_size = pub_f.tellg();
+    pub_f.seekg(0, pub_f.beg);
 
-    char *cert_c = new char[cert_size];
-    cert_f.read(cert_c, cert_size);
-    cert_c[cert_size] = '\0';
-    cert_str = std::string(cert_c);
-    cert_f.close();
+    auto pub_c = std::make_unique<char[]>(pub_size + 1);
+    pub_f.read(pub_c.get(), pub_size);
+    pub_c[pub_size] = '\0';
+    pub_str = std::string(pub_c.get());
+    pub_f.close();
 
     // read ca key
     std::streamoff key_size = key_f.tellg();
     key_f.seekg(0, key_f.beg);
 
-    char *key_c = new char[key_size];
-    key_f.read(key_c, key_size);
+    auto key_c = std::make_unique<char[]>(key_size + 1);
+    key_f.read(key_c.get(), key_size);
     key_c[key_size] = '\0';
-    key_str = std::string(key_c);
+    key_str = std::string(key_c.get());
     key_f.close();
-
-    // Extract public certificate from PEM
-    // Write the cert_str to a BIO
-    BIO *bio = BIO_new_mem_buf(cert_str.c_str(), -1);
-
-    // Read from BIO to a X509 certifciate
-    X509 *x = NULL;
-    PEM_read_bio_X509(bio, &x, NULL, NULL);
-
-    // Extract pubkey
-    EVP_PKEY *pkey = X509_get_pubkey(x);
-
-    // Write the pubkey to a BIO and read back as text
-    char *cert = new char[4096];
-    BIO *cbio = BIO_new(BIO_s_mem());
-    if (PEM_write_bio_PUBKEY(cbio, pkey)) {
-      int size = BIO_read(cbio, cert, 4096);
-      cert[size] = '\0';
-    }
-
-    EVP_PKEY_free(pkey);
-    X509_free(x);
-    BIO_free(bio);
-    BIO_free(cbio);
   }
 };
 
 TEST_F(CertificateTest, TestLoadCA) {
-  ASSERT_EQ(cg.LoadCA(cert_str, key_str), 1);
+  ASSERT_EQ(cg.LoadCA(pub_str, key_str), 1);
   ASSERT_EQ(cg.get_ca_key(), key_str);
-  ASSERT_EQ(cg.get_ca_cert(), cert);
+  ASSERT_EQ(cg.get_ca_cert(), pub_str);
 }
 
-TEST_F(CertificateTest, TestGenCert) {
-  cert::CertificateOptions co;
-  co.hostname = "test.testing";
-  cg.GenCert(&co);
-  ASSERT_EQ(true, true);
+/*
+TEST_F(CertificateTest, TestGenCSR) {
+cert::CertificateOptions co;
+co.hostname = "test.testing";
+ASSERT_EQ(cg.LoadCA(pub_str, key_str), 1);
+ASSERT_EQ(cg.GenKey(2048), 1);
+ASSERT_EQ(cg.GenCSR(&co), 1);
 }
+*/
+
+TEST_F(CertificateTest, TestGenCert) {
+  ASSERT_EQ(cg.LoadCA(pub_str, key_str), 1);
+  ASSERT_EQ(cg.GenKey(2048), 1);
+  ASSERT_EQ(cg.GenCert(), 1);
+}
+
+TEST_F(CertificateTest, TestGenKey) { ASSERT_EQ(cg.GenKey(2048), 1); }
 }

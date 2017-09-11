@@ -1,3 +1,4 @@
+
 #include "pki.h"
 #include "cert.h"
 
@@ -13,7 +14,8 @@ Status RegisterImpl::CreateIdentity(ServerContext *context, const Identity id,
 
   cert::CertificateOptions co = {id.hostname(), id.subject()};
 
-  cg.GenCert(&co);
+  cg.GenCSR(&co);
+  cg.GenCert();
 
   cert.set_server_certificate(cg.get_server_cert());
   cert.set_server_key(cg.get_server_key());
