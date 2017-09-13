@@ -1,6 +1,3 @@
-#ifndef CLIENT_H
-#define CLIENT_H
-
 #include "client.h"
 
 using grpc::ClientContext;
@@ -18,8 +15,8 @@ void PkiClient::CreateIdentity(const std::string &hostname) {
 
   Status status = stub_->CreateIdentity(&ctx, id, &cert);
   if (status.ok()) {
-    std::cout << "server certificate: " << cert.server_certificate() << "\n";
-    std::cout << "server key: " << cert.server_key() << "\n";
+    std::cout << "server certificate: " << cert.server_cert() << "\n";
+    std::cout << "server key: " << cert.server_pubkey() << "\n";
 
   } else {
     std::cerr << "grpc_error=" << status.error_code() << ":"
@@ -27,5 +24,3 @@ void PkiClient::CreateIdentity(const std::string &hostname) {
   }
 }
 }
-
-#endif

@@ -40,7 +40,7 @@ int CertificateGenerator::GenKey(const int size) {
     return 0;
   }
 
-  if (!EVP_PKEY_assign_RSA(this->server_key, rsa.get())) {
+  if (!EVP_PKEY_set1_RSA(this->server_key, rsa.get())) {
     ERR_print_errors_fp(stderr);
     return 0;
   }
@@ -48,41 +48,52 @@ int CertificateGenerator::GenKey(const int size) {
   return 1;
 }
 
-int CertificateGenerator::GenCSR(CertificateOptions *opts) {
-  X509_REQ *req = X509_REQ_new();
-  X509_NAME *name = X509_NAME_new();
+int CertificateGenerator::GenCSR(const CertificateOptions &opts) {
+  X509_REQ_ptr req(X509_REQ_new(), X509_REQ_free);
+  X509_NAME_ptr name(X509_NAME_new(), X509_NAME_free);
 
-  if (!X509_REQ_set_pubkey(req, this->server_key)) {
+  if (!X509_REQ_set_pubkey(req.get(), this->server_key)) {
     ERR_print_errors_fp(stderr);
     return 0;
   }
 
-  if (!X509_NAME_add_entry_by_txt(name, "C", MBSTRING_ASC,
-                                  (unsigned char *)opts->country.c_str(), -1,
-                                  -1, 0)) {
-    return 0;
-  }
-
-  if (!X509_NAME_add_entry_by_txt(name, "O", MBSTRING_ASC,
-                                  (unsigned char *)opts->org.c_str(), -1, -1,
+  if (!X509_NAME_add_entry_by_txt(name.get(), "C", MBSTRING_ASC,
+                                  (unsigned char *)opts.country.c_str(), -1, -1,
                                   0)) {
+    ERR_print_errors_fp(stderr);
     return 0;
   }
 
-  if (!X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC,
-                                  (unsigned char *)opts->hostname.c_str(), -1,
+  if (!X509_NAME_add_entry_by_txt(name.get(), "ST", MBSTRING_ASC,
+                                  (unsigned char *)opts.state.c_str(), -1, -1,
+                                  0)) {
+    ERR_print_errors_fp(stderr);
+    return 0;
+  }
+
+  if (!X509_NAME_add_entry_by_txt(name.get(), "O", MBSTRING_ASC,
+                                  (unsigned char *)opts.org.c_str(), -1, -1,
+                                  0)) {
+    ERR_print_errors_fp(stderr);
+    return 0;
+  }
+
+  if (!X509_NAME_add_entry_by_txt(name.get(), "CN", MBSTRING_ASC,
+                                  (unsigned char *)opts.hostname.c_str(), -1,
                                   -1, 0)) {
+    ERR_print_errors_fp(stderr);
     return 0;
   }
 
-  if (!X509_REQ_set_subject_name(req, name)) {
+  if (!X509_REQ_set_subject_name(req.get(), name.get())) {
+    ERR_print_errors_fp(stderr);
     return 0;
   }
 
   return 1;
 }
 
-int CertificateGenerator::GenCert(void) {
+int CertificateGenerator::GenCert(const CertificateOptions &opts) {
   X509_ptr x509(X509_new(), X509_free);
   if (x509 == nullptr) {
     std::cerr << "failed to allocate x509" << std::endl;
@@ -96,8 +107,11 @@ int CertificateGenerator::GenCert(void) {
   X509_gmtime_adj(X509_get_notBefore(x509.get()), 0);
   X509_gmtime_adj(X509_get_notAfter(x509.get()), 31536000L);
 
-  // Set pubkey
-  X509_set_pubkey(x509.get(), this->server_key);
+  // Set pubkey to the server_key
+  if (!X509_set_pubkey(x509.get(), this->server_key)) {
+    ERR_print_errors_fp(stderr);
+    return 0;
+  }
 
   // Sign with ca_key
   if (!X509_sign(x509.get(), this->ca_key, EVP_sha256())) {
@@ -106,14 +120,16 @@ int CertificateGenerator::GenCert(void) {
     return 0;
   }
 
+  // Write to BIO to convert to string
   BIO_ptr bio(BIO_new(BIO_s_mem()), BIO_free);
   auto server_c = std::make_unique<char[]>(4096);
 
   if (PEM_write_bio_X509(bio.get(), x509.get())) {
-    int sz = BIO_read(bio.get(), &server_c, 4096);
-    server_c[sz] = '\0';
+    int sz = BIO_read(bio.get(), server_c.get(), 4096);
+    server_c.get()[sz] = '\0';
   }
 
+  this->server_cert_ = std::string(server_c.get());
   return 1;
 }
 
@@ -129,6 +145,7 @@ std::string CertificateGenerator::get_ca_cert() {
   std::string cert_str(cert.get());
   return cert_str;
 }
+
 std::string CertificateGenerator::get_ca_key() {
   // FIX: calculate key size
   auto key = std::make_unique<char[]>(4096);
@@ -145,10 +162,30 @@ std::string CertificateGenerator::get_ca_key() {
 }
 
 std::string CertificateGenerator::get_server_cert() {
-  return std::string("server_cert");
+  return this->server_cert_;
 }
 
-std::string CertificateGenerator::get_server_key() {
-  return std::string("server_key");
+std::string CertificateGenerator::get_server_privkey() {
+  BIO_ptr bio(BIO_new(BIO_s_mem()), BIO_free);
+  auto server_c = std::make_unique<char[]>(4096);
+  RSA_ptr rsa(EVP_PKEY_get1_RSA(this->server_key), RSA_free);
+  if (PEM_write_bio_RSAPrivateKey(bio.get(), rsa.get(), NULL, NULL, 0, NULL,
+                                  NULL)) {
+    int sz = BIO_read(bio.get(), server_c.get(), 4096);
+    server_c.get()[sz] = '\0';
+  }
+
+  return std::string(server_c.get());
+}
+
+std::string CertificateGenerator::get_server_pubkey() {
+  BIO_ptr bio(BIO_new(BIO_s_mem()), BIO_free);
+  auto server_pub_c = std::make_unique<char[]>(4096);
+  if (PEM_write_bio_PUBKEY(bio.get(), this->server_key)) {
+    int sz = BIO_read(bio.get(), server_pub_c.get(), 4096);
+    server_pub_c.get()[sz] = '\0';
+  }
+
+  return std::string(server_pub_c.get());
 }
 } // namespace cert

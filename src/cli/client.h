@@ -1,3 +1,6 @@
+#ifndef CLIENT_H
+#define CLIENT_H
+
 #include <memory>
 #include <string>
 
@@ -18,3 +21,5 @@ namespace client {
     std::unique_ptr<Register::Stub> stub_;
   };
 }
+
+#endif

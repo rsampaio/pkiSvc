@@ -7,6 +7,7 @@
 namespace {
 class CertificateTest : public testing::Test {
 public:
+  cert::CertificateOptions co;
   cert::CertificateGenerator cg;
   std::string pub_str, key_str, line;
   std::unique_ptr<char[]> pub;
@@ -36,6 +37,12 @@ public:
     key_c[key_size] = '\0';
     key_str = std::string(key_c.get());
     key_f.close();
+
+    // CertificateOptions
+    co.hostname = "test.testing";
+    co.org = "personal inc";
+    co.state = "CA";
+    co.country = "US";
   }
 };
 
@@ -45,21 +52,24 @@ TEST_F(CertificateTest, TestLoadCA) {
   ASSERT_EQ(cg.get_ca_cert(), pub_str);
 }
 
-/*
 TEST_F(CertificateTest, TestGenCSR) {
-cert::CertificateOptions co;
-co.hostname = "test.testing";
-ASSERT_EQ(cg.LoadCA(pub_str, key_str), 1);
-ASSERT_EQ(cg.GenKey(2048), 1);
-ASSERT_EQ(cg.GenCSR(&co), 1);
+  ASSERT_EQ(cg.LoadCA(pub_str, key_str), 1);
+  ASSERT_EQ(cg.GenKey(2048), 1);
+  ASSERT_EQ(cg.GenCSR(co), 1);
+
+  // CSR expects all certification options
+  co.country = "";
+  ASSERT_EQ(cg.GenCSR(co), 0);
 }
-*/
 
 TEST_F(CertificateTest, TestGenCert) {
   ASSERT_EQ(cg.LoadCA(pub_str, key_str), 1);
   ASSERT_EQ(cg.GenKey(2048), 1);
-  ASSERT_EQ(cg.GenCert(), 1);
+  ASSERT_EQ(cg.GenCert(co), 1);
 }
 
-TEST_F(CertificateTest, TestGenKey) { ASSERT_EQ(cg.GenKey(2048), 1); }
+TEST_F(CertificateTest, TestGenKey) {
+  ASSERT_EQ(cg.GenKey(2048), 1);
+  ASSERT_EQ(cg.GenKey(1024), 1);
+}
 }

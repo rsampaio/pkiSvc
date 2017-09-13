@@ -11,11 +11,14 @@ service Register {
 
 message Identity {
   string hostname = 1;
-  string subject = 2;
+  string country = 2;
+  string state = 3;
+  string org = 4;
+
 }
 
 message Certificate {
-  string server_key = 1;
-  string server_certificate = 2;
-  string ca_certificate = 3;
+  string server_pubkey = 1;
+  string server_privkey = 2;
+  string server_cert = 3;
 }
