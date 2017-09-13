@@ -18,6 +18,14 @@ public:
     std::fstream key_f("ca.key.pem",
                        std::ios::binary | std::ios::in | std::ios::ate);
 
+    if (!pub_f.is_open() || !key_f.is_open()) {
+      std::cerr << "CA pub or key file not find\n"
+                << "use: openssl genrsa -out ca.key.pem && openssl rsa -pubout "
+                << "-in ca.key.pem -out ca.key.pub\n"
+                << std::endl;
+      exit(-1);
+    }
+
     // read ca pem
     std::streamoff pub_size = pub_f.tellg();
     pub_f.seekg(0, pub_f.beg);
