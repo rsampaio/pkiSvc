@@ -8,15 +8,15 @@ using grpc::Server;
 void RunServer() {
   std::string listen("0.0.0.0:5050");
 
-  char *ca_cert = std::getenv("CA_CERT");
-  char *ca_key = std::getenv("CA_KEY");
+  char *ca_pubkey = std::getenv("CA_PUBKEY");
+  char *ca_privkey = std::getenv("CA_PRIVKEY");
 
-  if (!ca_cert || !ca_key) {
-    std::cout << "CA_CERT or CA_KEY env vars not set" << std::endl;
+  if (!ca_pubkey || !ca_privkey) {
+    std::cout << "CA_PUBKEY or CA_PRIVKEY env vars not set" << std::endl;
   }
 
   RegisterImpl service;
-  if (!service.LoadCA(ca_cert, ca_key)) {
+  if (!service.LoadCA(ca_pubkey, ca_privkey)) {
     std::cout << "failed to load CA" << std::endl;
     return;
   }

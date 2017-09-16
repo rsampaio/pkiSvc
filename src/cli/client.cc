@@ -12,6 +12,9 @@ void PkiClient::CreateIdentity(const std::string &hostname) {
 
   Identity id;
   id.set_hostname(hostname);
+  id.set_country("US");
+  id.set_state("CA");
+  id.set_org("personal inc");
 
   Status status = stub_->CreateIdentity(&ctx, id, &cert);
   if (status.ok()) {
