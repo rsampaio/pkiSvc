@@ -4,6 +4,34 @@ The goal of this project is to practice C++14 and learn how to use OpenSSL APIs 
 
 *pkiSvc* is a mini CA/Certificate manager grpc service that generates RSA keypair and use them to sign CSR (Certificate Sign Request) or used as public key of X509 certificate signed by a the CA
 
+# Build
+
+## Linux
+
+Install dependencies: `cmake build-essential clang libssl-dev`
+```shell
+mkdir build && cd build && cmake ..
+cmake --build .
+```
+
+## Windows
+
+Use `vcpkg` to install dependencies:
+
+```shell
+vcpkg install openssl:x64-windows-static
+```
+
+Build using vcpkg:
+
+```shell
+mkdir build
+cd build
+cmake .. -G "Visual Studio 15 2017 Win64" -DCMAKE_TOOLCHAIN_FILE=YOUR_VCPKG_INSTALL\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
+cmake --build .
+```
+
+
 # Things I've learned in this project
 
 ## C++14
