@@ -7,7 +7,7 @@ int main(int argc, char *argv[]) {
   // the server and credentials for this service.
   client::PkiClient cli(grpc::CreateChannel(
       "localhost:5050", grpc::InsecureChannelCredentials()));
-
-  cli.CreateIdentity("cooldomain.io");
+  std::string name("cooldomain.io");
+  cli.CreateIdentity(name);
   return 0;
 }

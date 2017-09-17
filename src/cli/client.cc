@@ -1,14 +1,11 @@
 #include "client.h"
 
-using grpc::ClientContext;
-using grpc::Status;
-using pki::Certificate;
-using pki::Identity;
-
 namespace client {
 void PkiClient::CreateIdentity(const std::string &hostname) {
   Certificate cert;
   ClientContext ctx;
+
+  std::cout << "creating identity" << std::endl;
 
   Identity id;
   id.set_hostname(hostname);
