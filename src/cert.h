@@ -46,17 +46,17 @@ public:
   int GenCert(const CertificateOptions &opts);
 
   // accessors
-  std::string get_server_pubkey();
-  std::string get_server_privkey();
-  std::string get_server_cert();
-  std::string get_ca_cert();
-  std::string get_ca_key();
+  std::string server_pubkey();
+  std::string server_privkey();
+  std::string server_cert();
+  std::string ca_cert();
+  std::string ca_key();
 
 private:
   std::string server_cert_; // X509 cert
-  EVP_PKEY *server_key;     // RSA keypair
-  EVP_PKEY *ca_cert;        // CA cert (pub)
-  EVP_PKEY *ca_key;         // CA key (priv)
+  EVP_PKEY *server_key_;    // RSA keypair
+  EVP_PKEY *ca_cert_;       // CA cert (pub)
+  EVP_PKEY *ca_key_;        // CA key (priv)
 };
 }
 #endif

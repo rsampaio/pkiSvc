@@ -56,8 +56,8 @@ public:
 
 TEST_F(CertificateTest, TestLoadCA) {
   ASSERT_EQ(cg.LoadCA(pub_str, key_str), 1);
-  ASSERT_EQ(cg.get_ca_key(), key_str);
-  ASSERT_EQ(cg.get_ca_cert(), pub_str);
+  ASSERT_EQ(cg.ca_key(), key_str);
+  ASSERT_EQ(cg.ca_cert(), pub_str);
 }
 
 TEST_F(CertificateTest, TestGenCSR) {

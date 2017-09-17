@@ -27,9 +27,9 @@ Status RegisterImpl::CreateIdentity(ServerContext *context, const Identity *id,
     return Status(StatusCode::ABORTED, "gen-cert failed");
   }
 
-  cert->set_server_cert(cg.get_server_cert());
-  cert->set_server_privkey(cg.get_server_privkey());
-  cert->set_server_pubkey(cg.get_server_pubkey());
+  cert->set_server_cert(cg.server_cert());
+  cert->set_server_privkey(cg.server_privkey());
+  cert->set_server_pubkey(cg.server_pubkey());
 
   return Status::OK;
 }
