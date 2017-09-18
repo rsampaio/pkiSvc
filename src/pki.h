@@ -13,6 +13,8 @@ using pki::Certificate;
 using cert::CertificateGenerator;
 
 class RegisterImpl final : public Register::Service {
+  // Method signature is important
+  // make sure to override the correct method signature
   Status CreateIdentity(ServerContext *sc, const Identity *id,
                         Certificate *cert);
 

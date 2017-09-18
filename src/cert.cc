@@ -3,6 +3,7 @@
 namespace cert {
 int CertificateGenerator::LoadCA(const std::string &ca,
                                  const std::string &key) {
+  // Write CA pubkey to a BIO and store the EVP_PKEY in the object.
   BIO_ptr bio(BIO_new_mem_buf(ca.c_str(), -1), BIO_free);
   this->ca_cert_ = PEM_read_bio_PUBKEY(bio.get(), NULL, 0, NULL);
   if (!this->ca_cert_) {
@@ -10,6 +11,7 @@ int CertificateGenerator::LoadCA(const std::string &ca,
     return 0;
   }
 
+  // Write CA private key to a BIO and store EVP_PKEY in the object.
   BIO_ptr kbio(BIO_new_mem_buf(key.c_str(), -1), BIO_free);
   this->ca_key_ = PEM_read_bio_PrivateKey(kbio.get(), NULL, NULL, NULL);
   if (!this->ca_key_) {
@@ -20,26 +22,28 @@ int CertificateGenerator::LoadCA(const std::string &ca,
 }
 
 int CertificateGenerator::GenKey(const int size) {
+  // Initialize the EVP_PKEY that the RSA key will be assigned.
   this->server_key_ = EVP_PKEY_new();
   if (!this->server_key_) {
     ERR_print_errors_fp(stderr);
     return 0;
   }
 
-  // BIGNUM
+  // Initialize BIGNUM required to generate RSA keys.
   BN_ptr bn(BN_new(), BN_free);
   if (!BN_set_word(bn.get(), RSA_F4)) {
     ERR_print_errors_fp(stderr);
     return 0;
   }
 
-  // RSA_generate_key is deprecated use _ex
+  // RSA_generate_key is deprecated use _ex.
   RSA_ptr rsa(RSA_new(), RSA_free);
   if (!RSA_generate_key_ex(rsa.get(), size, bn.get(), NULL)) {
     ERR_print_errors_fp(stderr);
     return 0;
   }
 
+  // Assign the RSA key.
   if (!EVP_PKEY_set1_RSA(this->server_key_, rsa.get())) {
     ERR_print_errors_fp(stderr);
     return 0;
@@ -100,27 +104,27 @@ int CertificateGenerator::GenCert(const CertificateOptions &opts) {
     return 0;
   }
 
-  // Serial number
+  // Serial number.
   ASN1_INTEGER_set(X509_get_serialNumber(x509.get()), 1);
 
-  // Expire in 1 year
+  // Expire in 1 year.
   X509_gmtime_adj(X509_get_notBefore(x509.get()), 0);
   X509_gmtime_adj(X509_get_notAfter(x509.get()), 31536000L);
 
-  // Set pubkey to the server_key
+  // Set pubkey to the server_key.
   if (!X509_set_pubkey(x509.get(), this->server_key_)) {
     ERR_print_errors_fp(stderr);
     return 0;
   }
 
-  // Sign with ca_key
+  // Sign with ca_key.
   if (!X509_sign(x509.get(), this->ca_key_, EVP_sha256())) {
     std::cerr << "failed to sign certificate" << std::endl;
     ERR_print_errors_fp(stderr);
     return 0;
   }
 
-  // Write to BIO to convert to string
+  // Write to BIO to convert to string.
   BIO_ptr bio(BIO_new(BIO_s_mem()), BIO_free);
   auto server_c = std::make_unique<char[]>(4096);
 
@@ -134,7 +138,7 @@ int CertificateGenerator::GenCert(const CertificateOptions &opts) {
 }
 
 std::string CertificateGenerator::ca_cert() {
-  // FIX: calculate cert size
+  // FIX: calculate cert size.
   auto cert = std::make_unique<char[]>(4096);
   BIO_ptr bio(BIO_new(BIO_s_mem()), BIO_free);
 
@@ -147,7 +151,7 @@ std::string CertificateGenerator::ca_cert() {
 }
 
 std::string CertificateGenerator::ca_key() {
-  // FIX: calculate key size
+  // FIX: calculate key size.
   auto key = std::make_unique<char[]>(4096);
   BIO_ptr bio(BIO_new(BIO_s_mem()), BIO_free);
 
@@ -167,6 +171,7 @@ std::string CertificateGenerator::server_privkey() {
   BIO_ptr bio(BIO_new(BIO_s_mem()), BIO_free);
   auto server_c = std::make_unique<char[]>(4096);
   RSA_ptr rsa(EVP_PKEY_get1_RSA(this->server_key_), RSA_free);
+
   if (PEM_write_bio_RSAPrivateKey(bio.get(), rsa.get(), NULL, NULL, 0, NULL,
                                   NULL)) {
     int sz = BIO_read(bio.get(), server_c.get(), 4096);
@@ -179,6 +184,7 @@ std::string CertificateGenerator::server_privkey() {
 std::string CertificateGenerator::server_pubkey() {
   BIO_ptr bio(BIO_new(BIO_s_mem()), BIO_free);
   auto server_pub_c = std::make_unique<char[]>(4096);
+
   if (PEM_write_bio_PUBKEY(bio.get(), this->server_key_)) {
     int sz = BIO_read(bio.get(), server_pub_c.get(), 4096);
     server_pub_c.get()[sz] = '\0';
