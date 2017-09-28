@@ -1,25 +1,36 @@
 #include "client.h"
 
 namespace client {
-void PkiClient::CreateIdentity(const std::string &hostname) {
+void PkiClient::CreateIdentity(const CertificateOptions &co) {
   Certificate cert;
   ClientContext ctx;
 
-  std::cout << "creating identity" << std::endl;
-
-  Identity id;
-  id.set_hostname(hostname);
-  id.set_country("US");
-  id.set_state("CA");
-  id.set_org("personal inc");
-
-  Status status = stub_->CreateIdentity(&ctx, id, &cert);
+  Status status = stub_->CreateIdentity(&ctx, co, &cert);
   if (status.ok()) {
-    std::cout << "server certificate: " << cert.server_cert() << "\n";
-    std::cout << "server key: " << cert.server_pubkey() << "\n";
+    json out_json;
+    out_json["server_certificate"] = cert.signed_cert();
+    out_json["server_privkey"] = cert.key_pair().privkey();
+    out_json["server_pubkey"] = cert.key_pair().pubkey();
 
+    std::cout << out_json << std::endl;
   } else {
     std::cerr << "grpc_error=" << status.error_code() << ":"
+              << status.error_message() << std::endl;
+  }
+}
+
+void PkiClient::CreateCSR(const CertificateOptions &co) {
+  ClientContext ctx;
+  CSR csr;
+  Status status = stub_->CreateCSR(&ctx, co, &csr);
+  if (status.ok()) {
+    json out_json;
+    out_json["server_csr"] = csr.sign_request();
+    out_json["server_privkey"] = csr.key_pair().privkey();
+    out_json["server_pubkey"] = csr.key_pair().pubkey();
+    std::cout << out_json << std::endl;
+  } else {
+    std::cerr << "at=create_csr grpc_error=" << status.error_code() << ":"
               << status.error_message() << std::endl;
   }
 }

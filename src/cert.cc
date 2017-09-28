@@ -4,16 +4,18 @@ namespace cert {
 int CertificateGenerator::LoadCA(const std::string &ca,
                                  const std::string &key) {
   // Write CA pubkey to a BIO and store the EVP_PKEY in the object.
-  BIO_ptr bio(BIO_new_mem_buf(ca.c_str(), -1), BIO_free);
-  this->ca_cert_ = PEM_read_bio_PUBKEY(bio.get(), NULL, 0, NULL);
+  auto ca_pub = std::unique_ptr<FILE, decltype(&std::fclose)>(
+      std::fopen(ca.c_str(), "r"), &std::fclose);
+  this->ca_cert_ = PEM_read_PUBKEY(ca_pub.get(), NULL, 0, NULL);
   if (!this->ca_cert_) {
     ERR_print_errors_fp(stderr);
     return 0;
   }
 
   // Write CA private key to a BIO and store EVP_PKEY in the object.
-  BIO_ptr kbio(BIO_new_mem_buf(key.c_str(), -1), BIO_free);
-  this->ca_key_ = PEM_read_bio_PrivateKey(kbio.get(), NULL, NULL, NULL);
+  auto ca_key = std::unique_ptr<FILE, decltype(&std::fclose)>(
+      std::fopen(key.c_str(), "r"), &std::fclose);
+  this->ca_key_ = PEM_read_PrivateKey(ca_key.get(), NULL, NULL, NULL);
   if (!this->ca_key_) {
     ERR_print_errors_fp(stderr);
     return 0;
@@ -94,6 +96,13 @@ int CertificateGenerator::GenCSR(const CertificateOptions &opts) {
     return 0;
   }
 
+  BIO_ptr out_bio(BIO_new(BIO_s_mem()), BIO_free);
+  auto out_c = std::make_unique<char[]>(4096);
+  if (PEM_write_bio_X509_REQ(out_bio.get(), req.get())) {
+    BIO_read(out_bio.get(), out_c.get(), 4096);
+  }
+
+  this->server_csr_ = std::string(out_c.get());
   return 1;
 }
 
@@ -165,8 +174,6 @@ std::string CertificateGenerator::ca_key() {
   return key_str;
 }
 
-std::string CertificateGenerator::server_cert() { return this->server_cert_; }
-
 std::string CertificateGenerator::server_privkey() {
   BIO_ptr bio(BIO_new(BIO_s_mem()), BIO_free);
   auto server_c = std::make_unique<char[]>(4096);
@@ -192,4 +199,7 @@ std::string CertificateGenerator::server_pubkey() {
 
   return std::string(server_pub_c.get());
 }
+std::string CertificateGenerator::server_cert() { return this->server_cert_; }
+std::string CertificateGenerator::server_csr() { return this->server_csr_; }
+
 } // namespace cert

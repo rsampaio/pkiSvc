@@ -2,23 +2,31 @@
 
 #include "pki.h"
 
+#include "docopt.h"
+
 using grpc::ServerBuilder;
 using grpc::Server;
 
-void RunServer() {
-  std::string listen("0.0.0.0:5050");
+static const char USAGE[] = R"(pkiSvc
+    Usage:
+      pkiSvc server --ca-pub=<pub-file> --ca-priv=<priv-file> [-l <address>]
 
-  char *ca_pubkey = std::getenv("CA_PUBKEY");
-  char *ca_privkey = std::getenv("CA_PRIVKEY");
+    Options:
+      --ca-pub=<pub-file>              CA public key
+      --ca-priv=<priv-file>            CA private key
+      -l <address>,--listen <address>  Listen in this address [default: 0.0.0.0:5050]
+)";
 
-  if (!ca_pubkey || !ca_privkey) {
-    std::cout << "CA_PUBKEY or CA_PRIVKEY env vars not set" << std::endl;
-  }
+int main(int argc, char *argv[]) {
+  auto args = docopt::docopt(USAGE, {argv + 1, argv + argc}, true, "pkiSvc");
+
+  std::string listen(args["--listen"].asString());
 
   RegisterImpl service;
-  if (!service.LoadCA(ca_pubkey, ca_privkey)) {
+  if (!service.LoadCA(args["--ca-pub"].asString(),
+                      args["--ca-priv"].asString())) {
     std::cout << "failed to load CA" << std::endl;
-    return;
+    return 1;
   }
 
   ServerBuilder builder;
@@ -30,9 +38,5 @@ void RunServer() {
   std::cout << "at=start service=grpc listen=" << listen << "\n";
 
   server->Wait();
-}
-
-int main(int argc, char *argv[]) {
-  RunServer();
   return 0;
 }

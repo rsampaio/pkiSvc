@@ -5,20 +5,29 @@ package pki;
 import "google/protobuf/empty.proto";
 
 service Register {
-  rpc CreateIdentity(Identity) returns (Certificate) {}
+  rpc CreateIdentity(CertificateOptions) returns (Certificate) {}
+  rpc CreateCSR(CertificateOptions) returns (CSR) {}
   rpc VerifyCertificate(Certificate) returns (google.protobuf.Empty) {}
 }
 
-message Identity {
+message CertificateOptions {
   string hostname = 1;
   string country = 2;
   string state = 3;
   string org = 4;
+}
 
+message KeyPair {
+  string pubkey = 1;
+  string privkey = 2;
 }
 
 message Certificate {
-  string server_pubkey = 1;
-  string server_privkey = 2;
-  string server_cert = 3;
+  KeyPair key_pair = 1;
+  string signed_cert = 2;
+}
+
+message CSR {
+  KeyPair key_pair = 1;
+  string sign_request = 2;
 }

@@ -1,3 +1,27 @@
+ExternalProject_Add(json_project
+  GIT_REPOSITORY "https://github.com/nlohmann/json"
+  GIT_TAG "v2.1.1"
+  INSTALL_COMMAND ""
+  UPDATE_COMMAND "")
+
+ExternalProject_Get_Property(json_project source_dir)
+include_directories(${source_dir}/src)
+
+ExternalProject_Add(docopt_project
+  GIT_REPOSITORY "https://github.com/docopt/docopt.cpp.git"
+  INSTALL_COMMAND ""
+  UPDATE_COMMAND "")
+
+ExternalProject_Get_Property(docopt_project source_dir binary_dir)
+include_directories(${source_dir})
+add_library(docopt STATIC IMPORTED)
+
+if (MSVC)
+  set_property(TARGET docopt PROPERTY IMPORTED_LOCATION ${binary_dir}/Release/docopt_s.lib)
+else()
+  set_property(TARGET docopt PROPERTY IMPORTED_LOCATION ${binary_dir}/libdocopt.a)
+endif()
+
 ExternalProject_Add(grpc_project
   GIT_REPOSITORY "https://github.com/grpc/grpc.git"
   GIT_TAG "v1.6.0"
@@ -5,9 +29,9 @@ ExternalProject_Add(grpc_project
   INSTALL_COMMAND ""
   UPDATE_COMMAND ""
   BUILD_COMMAND
-    ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE} --target grpc++_unsecure &&
-    ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE} --target protoc &&
-    ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE} --target grpc_cpp_plugin
+    ${CMAKE_COMMAND} --build . --config Release --target grpc++_unsecure &&
+    ${CMAKE_COMMAND} --build . --config Release --target protoc &&
+    ${CMAKE_COMMAND} --build . --config Release --target grpc_cpp_plugin
   CMAKE_CACHE_ARGS
     -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
     -DCMAKE_VERBOSE_MAKEFILE:BOOL=OFF)
@@ -22,15 +46,17 @@ include_directories("${gRPC_SOURCE}/include")
 include_directories("${gRPC_SOURCE}/third_party/protobuf/src")
 
 if(MSVC)
-  set(PROTOC_COMMAND "${gRPC_BINARY}/third_party/protobuf/Release/protoc.exe")
-  get_filename_component(gRPC_CPP_PLUGIN_EXECUTABLE "${gRPC_BINARY}/Release/grpc_cpp_plugin.exe" ABSOLUTE)
+  set(BUILD_TYPE "Release")
+
+  set(PROTOC_COMMAND "${gRPC_BINARY}/third_party/protobuf/${BUILD_TYPE}/protoc.exe")
+  get_filename_component(gRPC_CPP_PLUGIN_EXECUTABLE "${gRPC_BINARY}/${BUILD_TYPE}/grpc_cpp_plugin.exe" ABSOLUTE)
   set(gRPC_LIBS
-    ${gRPC_BINARY}/Release/grpc++_unsecure.lib
-    ${gRPC_BINARY}/Release/grpc_unsecure.lib
-    ${gRPC_BINARY}/Release/gpr.lib
-    ${gRPC_BINARY}/third_party/protobuf/Release/libprotobuf.lib
-    ${gRPC_BINARY}/third_party/cares/Release/cares.lib
-    ${gRPC_BINARY}/third_party/zlib/Release/zlibstatic.lib
+    ${gRPC_BINARY}/${BUILD_TYPE}/grpc++_unsecure.lib
+    ${gRPC_BINARY}/${BUILD_TYPE}/grpc_unsecure.lib
+    ${gRPC_BINARY}/${BUILD_TYPE}/gpr.lib
+    ${gRPC_BINARY}/third_party/protobuf/${BUILD_TYPE}/libprotobuf${DEBUG_LIB}.lib
+    ${gRPC_BINARY}/third_party/cares/${BUILD_TYPE}/cares.lib
+    ${gRPC_BINARY}/third_party/zlib/${BUILD_TYPE}/zlibstatic${DEBUG_LIB}.lib
     ws2_32.lib #seriously?
     )
 else()
@@ -84,7 +110,7 @@ add_executable(pkiSvc
   "${pki_srcs}"
   "${pki_proto_srcs}" "${pki_grpc_srcs}")
 
-target_link_libraries(pkiSvc "${gRPC_LIBS}" OpenSSL::SSL)
+target_link_libraries(pkiSvc "${gRPC_LIBS}" docopt OpenSSL::SSL)
 
 # Generated include directory
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/cli")
@@ -93,4 +119,4 @@ add_executable(pkiCli
   "${pki_cli_srcs}"
   "${pki_proto_srcs}" "${pki_grpc_srcs}")
 
-target_link_libraries(pkiCli ${gRPC_LIBS} OpenSSL::SSL)
+target_link_libraries(pkiCli ${gRPC_LIBS} docopt OpenSSL::SSL)

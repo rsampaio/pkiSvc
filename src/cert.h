@@ -49,10 +49,12 @@ public:
   std::string server_pubkey();
   std::string server_privkey();
   std::string server_cert();
+  std::string server_csr();
   std::string ca_cert();
   std::string ca_key();
 
 private:
+  std::string server_csr_;  // X509 CSR
   std::string server_cert_; // X509 cert
   EVP_PKEY *server_key_;    // RSA keypair
   EVP_PKEY *ca_cert_;       // CA cert (pub)
